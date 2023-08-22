@@ -2,9 +2,9 @@ from django.db import models
 import os
 
 
-class User(models.Model):
-    phone_or_email = models.CharField(max_length=100, unique=True)
-    password = models.CharField(max_length=50)
+# class User(models.Model):
+#     phone_or_email = models.CharField(max_length=100, unique=True)
+#     password = models.CharField(max_length=50)
 
 
 class File(models.Model):
