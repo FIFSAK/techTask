@@ -1,31 +1,29 @@
 import os
-
-from django.contrib.auth.decorators import login_required
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import permission_classes, authentication_classes, api_view
 from rest_framework.permissions import IsAuthenticated
-
 from .models import File
-from django.contrib.auth.models import User
-from django.shortcuts import render, redirect
-from django.contrib.auth import login
-from .forms import FileForm
 from django.http import JsonResponse
-from .models import File
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.models import User
+from django.contrib.auth import login
+import json
+from django.contrib import messages
+from django.shortcuts import redirect
 
 
+@api_view(['POST'])
 def user_registration(request):
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        data = json.loads(request.body)
+        username = data.get('username')
+        password = data.get('password')
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'detail': 'Username already taken'}, status=400)
         user = User.objects.create_user(username=username, password=password)
         login(request, user)
-        # return redirect('')  # или куда-либо ещё после регистрации
-    return render(request, 'signup.html')
-
-
-from django.http import JsonResponse
-from .models import File
+        return JsonResponse({'detail': 'User registered successfully'}, status=201)
+    return JsonResponse({'detail': 'Method "GET" not allowed.'}, status=405)
 
 
 @api_view(['POST'])
