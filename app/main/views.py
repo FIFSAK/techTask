@@ -1,12 +1,17 @@
 import os
 
 from django.contrib.auth.decorators import login_required
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import permission_classes, authentication_classes, api_view
+from rest_framework.permissions import IsAuthenticated
 
 from .models import File
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
 from django.contrib.auth import login
 from .forms import FileForm
+from django.http import JsonResponse
+from .models import File
 
 
 def user_registration(request):
@@ -18,32 +23,26 @@ def user_registration(request):
         # return redirect('')  # или куда-либо ещё после регистрации
     return render(request, 'signup.html')
 
-@login_required
-def upload_file(request):
-    if request.method == 'POST':
-        form = FileForm(request.POST, request.FILES)
-        if form.is_valid():
-            uploaded_file = request.FILES['file']
 
-            # Determine file attributes
-            file_name, file_extension = os.path.splitext(uploaded_file.name)
-            file_size = uploaded_file.size
-            mime_type = uploaded_file.content_type
-
-            # Create a new File instance and save
-            new_file = File(
-                user=request.user,  # добавить эту строку
-                name=file_name,
-                extension=file_extension,
-                MIME_type=mime_type,
-                size=file_size,
-                file=uploaded_file  # заменить uploaded_file на file, потому что в модели это поле называется file
-            )
-            new_file.save()
-
-            # return redirect('success_url')  # replace 'success_url' with your desired redirect
-    else:
-        form = FileForm()
-    return render(request, 'upload.html', {'form': form})
+from django.http import JsonResponse
+from .models import File
 
 
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def upload_file_view(request):
+    if request.method == 'POST' and request.FILES['file']:
+        uploaded_file = request.FILES['file']
+        name, extension = os.path.splitext(uploaded_file.name)
+        file_instance = File(
+            user=request.user,
+            file=uploaded_file,
+            name=name,
+            extension=extension,
+            MIME_type=uploaded_file.content_type,
+            size=uploaded_file.size
+        )
+        file_instance.save()
+        return JsonResponse({'message': 'File uploaded successfully'})
+    return JsonResponse({'message': 'Failed to upload file'})
