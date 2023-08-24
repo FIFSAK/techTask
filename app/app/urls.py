@@ -4,7 +4,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView, TokenVerifyView,
 )
 from django.urls import path
-from main.views import user_registration, upload_file_view
+from main.views import user_registration, upload_file_view, user_info_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -13,4 +13,5 @@ urlpatterns = [
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     path('signup/', user_registration, name='signup'),
     path('file/upload/', upload_file_view, name='upload_file'),
+    path('api/user-info/', user_info_view, name='user-info'),
 ]

@@ -2,6 +2,8 @@ import os
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import permission_classes, authentication_classes, api_view
 from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 from .models import File
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -10,7 +12,7 @@ from django.contrib.auth import login
 import json
 from django.contrib import messages
 from django.shortcuts import redirect
-
+from rest_framework.response import Response
 
 @api_view(['POST'])
 def user_registration(request):
@@ -27,7 +29,7 @@ def user_registration(request):
 
 
 @api_view(['POST'])
-@authentication_classes([TokenAuthentication])
+@authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def upload_file_view(request):
     if request.method == 'POST' and request.FILES['file']:
@@ -44,3 +46,19 @@ def upload_file_view(request):
         file_instance.save()
         return JsonResponse({'message': 'File uploaded successfully'})
     return JsonResponse({'message': 'Failed to upload file'})
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def user_info_view(request):
+    user = request.user
+    data = {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "is_active": user.is_active
+    }
+    return Response(data)
