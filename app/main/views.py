@@ -1,18 +1,15 @@
 import os
-from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import permission_classes, authentication_classes, api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-
+from .serializers import FileSerializer
 from .models import File
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from django.contrib.auth import login
 import json
-from django.contrib import messages
-from django.shortcuts import redirect
 from rest_framework.response import Response
+from django.http import FileResponse, Http404
 
 
 @api_view(['POST'])
@@ -56,25 +53,14 @@ def upload_file_view(request):
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
-def get_user_file(request):
-    if request.method == 'GET':
-        if 'file' not in request.FILES:
-            return JsonResponse({'message': 'No file part in the request'}, status=400)
+def user_files_view(request):
+    user = request.user
+    user_files = File.objects.filter(user=user)
 
-        uploaded_file = request.FILES['file']
-        name, extension = os.path.splitext(uploaded_file.name)
-        file_instance = File(
-            user=request.user,
-            file=uploaded_file,
-            name=name,
-            extension=extension,
-            MIME_type=uploaded_file.content_type,
-            size=uploaded_file.size
-        )
-        file_instance.save()
-        return JsonResponse({'message': 'File uploaded successfully'})
+    # Serialize the user's files
+    serializer = FileSerializer(user_files, many=True)
 
-    return JsonResponse({'message': 'Failed to upload file'})
+    return Response(serializer.data)
 
 
 @api_view(['GET'])
@@ -91,3 +77,57 @@ def user_info_view(request):
         "is_active": user.is_active
     }
     return Response(data)
+
+
+@api_view(['DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_file_view(request, id):  # Notice the 'id' parameter here
+    try:
+        file_instance = File.objects.get(id=id)
+    except File.DoesNotExist:
+        raise Http404("File not found.")
+
+    # Check if the authenticated user is the owner of the file or is an admin
+    if request.user == file_instance.user or request.user.is_staff:
+        file_instance.delete()
+        return Response({'message': 'File deleted successfully.'}, status=200)
+    else:
+        return Response({'message': 'Permission denied.'}, status=403)
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_one_file(request, id):
+    try:
+        user_file = File.objects.get(id=id)
+    except File.DoesNotExist:
+        return Response({'message': 'File not found.'}, status=404)
+
+    # Check if the authenticated user is the owner of the file or is an admin
+    if request.user != user_file.user and not request.user.is_staff:
+        return Response({'message': 'Permission denied.'}, status=403)
+
+    # Serialize the user's file
+    serializer = FileSerializer(user_file)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def download_file_view(request, id):
+    try:
+        file_instance = File.objects.get(id=id)
+    except File.DoesNotExist:
+        raise Http404("File not found.")
+
+    # Check if the authenticated user is the owner of the file, an admin, or if you want to allow everyone to download
+    if request.user != file_instance.user and not request.user.is_staff:
+        return Response({'message': 'Permission denied.'}, status=403)
+
+    # Serve the file for download
+    response = FileResponse(file_instance.file)
+    response['Content-Disposition'] = f'attachment; filename="{file_instance.name}{file_instance.extension}"'
+    return response
