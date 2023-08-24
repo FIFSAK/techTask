@@ -131,3 +131,32 @@ def download_file_view(request, id):
     response = FileResponse(file_instance.file)
     response['Content-Disposition'] = f'attachment; filename="{file_instance.name}{file_instance.extension}"'
     return response
+
+
+@api_view(['PUT'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def update_file_view(request, id):
+    try:
+        file_instance = File.objects.get(id=id)
+    except File.DoesNotExist:
+        return JsonResponse({'message': 'File not found.'}, status=404)
+
+    # Check if the authenticated user is the owner of the file or an admin
+    if request.user != file_instance.user and not request.user.is_staff:
+        return JsonResponse({'message': 'Permission denied.'}, status=403)
+
+    # Handle file update
+    if 'file' in request.FILES:
+        file_instance.file.delete()  # Delete the old file
+        uploaded_file = request.FILES['file']
+        name, extension = os.path.splitext(uploaded_file.name)
+        file_instance.file = uploaded_file
+        file_instance.name = name
+        file_instance.extension = extension
+        file_instance.MIME_type = uploaded_file.content_type
+        file_instance.size = uploaded_file.size
+        file_instance.save()
+        return JsonResponse({'message': 'File updated successfully'})
+    else:
+        return JsonResponse({'message': 'No file part in the request'}, status=400)

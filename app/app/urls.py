@@ -5,7 +5,7 @@ from rest_framework_simplejwt.views import (
 )
 from django.urls import path
 from main.views import user_registration, upload_file_view, user_info_view, user_files_view, delete_file_view, \
-    get_one_file, download_file_view
+    get_one_file, download_file_view, update_file_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -19,4 +19,5 @@ urlpatterns = [
     path('file/delete/<int:id>/', delete_file_view, name='delete-file'),
     path('file/<int:id>/', get_one_file, name='get_file_id'),
     path('file/download/<int:id>/', download_file_view, name='download-file'),
+    path('file/update/<int:id>/', update_file_view, name='update-file'),
 ]
