@@ -14,6 +14,7 @@ from django.contrib import messages
 from django.shortcuts import redirect
 from rest_framework.response import Response
 
+
 @api_view(['POST'])
 def user_registration(request):
     if request.method == 'POST':
@@ -32,7 +33,10 @@ def user_registration(request):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def upload_file_view(request):
-    if request.method == 'POST' and request.FILES['file']:
+    if request.method == 'POST':
+        if 'file' not in request.FILES:
+            return JsonResponse({'message': 'No file part in the request'}, status=400)
+
         uploaded_file = request.FILES['file']
         name, extension = os.path.splitext(uploaded_file.name)
         file_instance = File(
@@ -45,6 +49,31 @@ def upload_file_view(request):
         )
         file_instance.save()
         return JsonResponse({'message': 'File uploaded successfully'})
+
+    return JsonResponse({'message': 'Failed to upload file'})
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_user_file(request):
+    if request.method == 'GET':
+        if 'file' not in request.FILES:
+            return JsonResponse({'message': 'No file part in the request'}, status=400)
+
+        uploaded_file = request.FILES['file']
+        name, extension = os.path.splitext(uploaded_file.name)
+        file_instance = File(
+            user=request.user,
+            file=uploaded_file,
+            name=name,
+            extension=extension,
+            MIME_type=uploaded_file.content_type,
+            size=uploaded_file.size
+        )
+        file_instance.save()
+        return JsonResponse({'message': 'File uploaded successfully'})
+
     return JsonResponse({'message': 'Failed to upload file'})
 
 
